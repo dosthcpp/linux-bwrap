@@ -1,0 +1,38 @@
+{
+  "name": "@paperclipai/plugin-linux-bwrap",
+  "version": "0.1.0",
+  "description": "Linux Bubblewrap sandbox provider with exact default-deny HTTP(S) egress for Paperclip",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "paperclipPlugin": {
+    "manifest": "./dist/manifest.js",
+    "worker": "./dist/worker.js"
+  },
+  "scripts": {
+    "build:sdk": "pnpm --filter @paperclipai/shared build && pnpm --filter @paperclipai/plugin-sdk build",
+    "build": "pnpm build:sdk && tsc",
+    "typecheck": "pnpm build:sdk && tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "pnpm build && PAPERCLIP_BWRAP_INTEGRATION=1 vitest run --config vitest.config.ts src/runner.integration.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "@types/react": "19.0.8",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "dependencies": {
+    "@paperclipai/plugin-sdk": "workspace:*"
+  }
+}
