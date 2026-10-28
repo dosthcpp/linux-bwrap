@@ -1,12 +1,20 @@
-# Linux Bubblewrap provider for Paperclip
+# AI Cloud Linux Bubblewrap provider for Paperclip
 
-An MIT-licensed source snapshot of `@paperclipai/plugin-linux-bwrap` for Linux Paperclip agent workers. It combines a Bubblewrap mount/network namespace with an exact HTTP(S) egress proxy, a workspace boundary, private runtime sockets, timeouts, and bounded output capture.
+This repository uses the preserved AI Cloud Linux provider source as its canonical
+baseline, restored on 2026-10-28 at the owner's direction. Its 14 source and test
+files come from the release-parity working copy last edited on 2026-09-20.
+See [PROVENANCE.md](PROVENANCE.md) for source identity and replacement scope.
+The Paperclip MIT notices remain in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-The publication baseline was rebuilt from a preserved source snapshot with TypeScript 5.9.3. All nine generated JavaScript modules matched the inspected server installation byte for byte before the publication changes. This repository then replaces deployment-specific Gate A defaults with operator configuration. See [PROVENANCE.md](PROVENANCE.md).
+The provider runs Linux commands inside Bubblewrap mount, PID, user, and network
+namespaces. A host-side proxy controls HTTP(S) egress. The child receives a
+loopback proxy and cannot route direct sockets out of its network namespace.
 
 ## Build and test
 
-Use Node.js 22.12.0 or later and pnpm 9.15.9. The matching Paperclip SDK and shared sources are included under `vendor/`; no parent monorepo, private registry, or monorepo install scripts are required.
+Use Node.js 22.12.0 or later and pnpm 9.15.9. The matching Paperclip SDK and shared
+sources are included under `vendor/`; the standalone build does not require the
+original parent monorepo.
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
@@ -15,51 +23,48 @@ pnpm typecheck
 pnpm test
 ```
 
-`pnpm build` builds the vendored shared package, SDK, and provider. The provider's manifest and worker entrypoints are `dist/manifest.js` and `dist/worker.js`. Package exports also use `dist`. This is a source repository; it does not publish an npm package or install a Paperclip service.
-
-On a non-root Linux account, install the distribution packages providing `/usr/bin/bwrap`, `/usr/bin/socat`, `/usr/bin/setpriv`, `/usr/bin/node`, and `/usr/bin/curl`. User namespaces and the relevant kernel sandbox facilities must be available. Then run the real confinement tests:
+The plugin entrypoints are `dist/manifest.js` and `dist/worker.js`. Package exports
+use `dist`. On a non-root Linux account, install the packages providing
+`/usr/bin/bwrap`, `/usr/bin/node`, `/usr/bin/socat`, `/usr/bin/setpriv`, and
+`/usr/bin/curl`, with user namespaces available, then run:
 
 ```sh
 pnpm test:integration
 ```
 
-These tests check egress denial, an allowed loopback upstream, namespace capability state, secret/environment isolation, removal of the transient execution specification, and output limits. Linux-only tests skip on macOS. Passing these tests is evidence about the tested environment, not a general sandbox security certification.
+The integration tests exercise `runSandboxed()` with an allowed loopback
+upstream, blocked egress, capability and NoNewPrivs checks, child environment and
+worker-secret isolation, transient specification removal, and output limits.
+Linux-only tests skip on macOS.
 
-## Operator configuration
+## AI Cloud configuration
 
-The Paperclip host owns this configuration. Do not derive it from an untrusted command or task payload. The [example](examples/provider-config.json) uses reserved test domains and paths; replace them with your own approved destinations and an existing absolute workspace directory.
+The provider preserves the AI Cloud source's fixed network profiles:
 
-```json
-{
-  "paperclipOrigin": "https://paperclip.example.test",
-  "workspaceRoot": "/srv/paperclip-workspace",
-  "gateAOrigins": [
-    "http://gate-a.example.test:8020",
-    "http://gate-a.example.test:8021"
-  ],
-  "networkProfile": "gate-a-strict",
-  "timeoutMs": 300000
-}
-```
-
-| Setting | Behavior |
+| Profile | Permitted destinations |
 | --- | --- |
-| `paperclipOrigin` | Required exact HTTP(S) origin for the Paperclip server. |
-| `workspaceRoot` | Required existing absolute directory, resolved through `realpath`. Requested working directories must remain inside it. |
-| `gateAOrigins` | Optional array of exact HTTP(S) origins. Defaults to `[]`; no original private destination is built in. Credentials, wildcard hosts, non-root paths, queries, fragments, and non-string entries are rejected. |
-| `networkProfile` | Defaults to `gate-a-strict`: permits only the configured Gate A origins and Paperclip origin. `codex-managed` additionally permits `https://chatgpt.com:443`, preserving the inspected installation's profile behavior. It does not add `api.openai.com` or arbitrary internet access. |
-| `timeoutMs` | Integer from 1 through 86400000; defaults to 300000. |
+| `gate-a-strict` (default) | `http://192.168.1.6:8020`, `http://192.168.1.6:8021`, and the configured `paperclipOrigin` |
+| `codex-managed` | The strict profile plus `https://chatgpt.com:443` |
 
-The proxy requires exact host and port matches. Plain HTTP requests can use only HTTP entries; HTTPS CONNECT can use only HTTPS entries. It performs upstream DNS resolution on the host. Operators remain responsible for the configured destinations and their DNS. There is no wildcard, CIDR, or generic TCP allowlist.
+The former public snapshot's configurable `gateAOrigins` field is no longer part
+of the manifest or policy. The restored parser ignores that field; it does not
+override or remove the two fixed AI Cloud destinations. Existing configurations
+must account for this behavior change.
 
-Configuration rejects HTTP and HTTPS entries sharing the same host and port, including conflicts with the Paperclip origin or the managed profile destination. This avoids ambiguous proxy routing.
+Set `workspaceRoot` to an existing absolute directory and `paperclipOrigin` to an
+HTTP(S) origin without credentials, a path, query, or fragment. `timeoutMs`
+defaults to 300000 and must be between 1 and 86400000. The
+[example](examples/provider-config.json) shows these fields; its Paperclip origin
+and workspace path are placeholders.
 
-Set `PAPERCLIP_BWRAP_RUNTIME_DIR` in the **worker service environment** to an existing absolute directory outside `workspaceRoot`, owned by that worker account with mode `0700`. Keep the path short enough for Unix sockets. The runner creates and removes private per-run directories there. It does not use a fixed deployment path or inherit ambient worker environment values into child commands.
+Set `PAPERCLIP_BWRAP_RUNTIME_DIR` in the worker service environment to an existing
+worker-owned, mode-0700 directory outside `workspaceRoot`. Keep its path short
+enough for Unix sockets. Per-run command/environment data is delivered through
+an anonymous pipe and removed before the child starts. The Bubblewrap process
+receives a fixed minimal environment. The runner also supports an explicit
+provider-owned callback bridge socket.
 
-The preserved runner also supports an explicit provider-owned callback bridge socket. This repository includes the local runner side only; configuring a remote helper, SSH transport, or Paperclip callback bridge host is outside this source snapshot.
-
-## Scope and license
-
-Included: local provider TypeScript, tests, manifest, configuration example, standalone build files, lockfile, matching SDK/shared sources, and the parent project's unmodified MIT notice. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-Excluded: live worker configuration, remote runtime helpers, deployment/service/SSH/nginx configuration, credentials, environment files, logs, evidence, backups, databases, sockets, original Git history, installed dependencies, and generated build output. No operational migration or service restart is performed by these sources. Review and integrate the built plugin with a compatible Paperclip host; this repository does not include that host.
+This is the local provider package with independent build support. Remote
+providers, service configuration, live credentials, and operational deployment
+are separate. Successful package tests do not establish live Paperclip managed
+acceptance or constitute a security audit.

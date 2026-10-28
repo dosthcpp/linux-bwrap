@@ -18,13 +18,7 @@ const manifest: PaperclipPluginManifestV1 = {
     configSchema: {
       type: "object",
       properties: {
-        paperclipOrigin: { type: "string", description: "Exact Paperclip server origin permitted by the proxy." },
-        gateAOrigins: {
-          type: "array",
-          items: { type: "string" },
-          default: [],
-          description: "Exact HTTP(S) origins configured by the server operator. No additional Gate A destinations are allowed when omitted.",
-        },
+        paperclipOrigin: { type: "string", description: "Paperclip server origin permitted in addition to the fixed Gate A endpoints." },
         workspaceRoot: { type: "string", description: "Canonical host workspace root exposed read-write to the sandbox." },
         timeoutMs: { type: "number", default: 300000 },
         networkProfile: {

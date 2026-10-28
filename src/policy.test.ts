@@ -7,19 +7,19 @@ import { assertWorkspacePath, isAllowedAuthority, parsePolicy } from "./policy.j
 describe("linux bwrap typed policy", () => {
   it.runIf(process.platform === "linux")("allows only Gate A and the configured Paperclip origin", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "bwrap-policy-"));
-    const policy = await parsePolicy({ workspaceRoot: root, gateAOrigins: ["http://gate-a.example.test:8020", "http://gate-a.example.test:8021"], paperclipOrigin: "https://paperclip.example.test:3100" });
-    expect(isAllowedAuthority(policy, "gate-a.example.test:8020")).toBe(true);
-    expect(isAllowedAuthority(policy, "gate-a.example.test:8021")).toBe(true);
-    expect(isAllowedAuthority(policy, "paperclip.example.test:3100")).toBe(true);
+    const policy = await parsePolicy({ workspaceRoot: root, paperclipOrigin: "https://paperclip.internal:3100" });
+    expect(isAllowedAuthority(policy, "192.168.1.6:8020")).toBe(true);
+    expect(isAllowedAuthority(policy, "192.168.1.6:8021")).toBe(true);
+    expect(isAllowedAuthority(policy, "paperclip.internal:3100")).toBe(true);
     expect(isAllowedAuthority(policy, "8.8.8.8:443")).toBe(false);
     expect(isAllowedAuthority(policy, "[::1]:8020")).toBe(false);
-    expect(isAllowedAuthority(policy, "gate-a.example.test:22")).toBe(false);
-    expect(isAllowedAuthority(policy, "user@gate-a.example.test:8020")).toBe(false);
+    expect(isAllowedAuthority(policy, "192.168.1.6:22")).toBe(false);
+    expect(isAllowedAuthority(policy, "user@192.168.1.6:8020")).toBe(false);
   });
 
   it.runIf(process.platform === "linux")("keeps the strict profile as the default", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "bwrap-policy-strict-"));
-    const policy = await parsePolicy({ workspaceRoot: root, gateAOrigins: ["http://gate-a.example.test:8020", "http://gate-a.example.test:8021"], paperclipOrigin: "https://paperclip.example.test:3100" });
+    const policy = await parsePolicy({ workspaceRoot: root, paperclipOrigin: "https://paperclip.internal:3100" });
     expect((policy as { networkProfile?: string }).networkProfile).toBe("gate-a-strict");
     expect(isAllowedAuthority(policy, "chatgpt.com:443")).toBe(false);
   });
@@ -28,7 +28,7 @@ describe("linux bwrap typed policy", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "bwrap-policy-codex-"));
     const policy = await parsePolicy({
       workspaceRoot: root,
-      gateAOrigins: ["http://gate-a.example.test:8020", "http://gate-a.example.test:8021"], paperclipOrigin: "https://paperclip.example.test:3100",
+      paperclipOrigin: "https://paperclip.internal:3100",
       networkProfile: "codex-managed",
     });
     expect((policy as { networkProfile?: string }).networkProfile).toBe("codex-managed");
@@ -41,7 +41,7 @@ describe("linux bwrap typed policy", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "bwrap-policy-invalid-"));
     await expect(parsePolicy({
       workspaceRoot: root,
-      gateAOrigins: ["http://gate-a.example.test:8020", "http://gate-a.example.test:8021"], paperclipOrigin: "https://paperclip.example.test:3100",
+      paperclipOrigin: "https://paperclip.internal:3100",
       networkProfile: "public",
     })).rejects.toThrow(/networkProfile/i);
   });

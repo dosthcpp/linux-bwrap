@@ -4,7 +4,7 @@ import { SANDBOX_HOME, SANDBOX_PATH, sandboxEnvironment } from "./sandbox-enviro
 describe("sandbox child environment", () => {
   it("replaces host HOME paths with a writable namespace-local home", () => {
     const environment = sandboxEnvironment({
-      HOME: "/host-home",
+      HOME: "/Users/tony",
       PATH: "/usr/bin:/bin",
       PAPERCLIP_RUN_ID: "run-1",
     });
@@ -14,8 +14,8 @@ describe("sandbox child environment", () => {
       PATH: SANDBOX_PATH,
       PAPERCLIP_RUN_ID: "run-1",
     });
-    expect(environment.HOME).not.toBe("/host-home");
-    expect(environment.PATH).not.toContain("/host-home");
+    expect(environment.HOME).not.toBe("/Users/tony");
+    expect(environment.PATH).not.toContain("/Users/tony");
   });
 
   it("bypasses the egress proxy only for the run-owned Paperclip bridge", () => {
@@ -32,7 +32,7 @@ describe("sandbox child environment", () => {
 
   it("keeps the proxy mandatory when no approved Paperclip bridge is present", () => {
     const environment = sandboxEnvironment({
-      PAPERCLIP_API_URL: "http://gate-a.example.test:8020/v1",
+      PAPERCLIP_API_URL: "http://192.168.1.6:8020/v1",
       NO_PROXY: "*",
       no_proxy: "*",
     });

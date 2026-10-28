@@ -10,7 +10,8 @@ export interface LinuxBwrapPolicy {
 
 export type NetworkProfile = "gate-a-strict" | "codex-managed";
 
-const CODEX_MANAGED = ["https://chatgpt.com"] as const;
+const GATE_A = ["http://192.168.1.6:8020", "http://192.168.1.6:8021"] as const;
+const CODEX_MANAGED = [...GATE_A, "https://chatgpt.com"] as const;
 
 function readNetworkProfile(value: unknown): NetworkProfile {
   if (value === undefined || value === "gate-a-strict") return "gate-a-strict";
@@ -21,8 +22,8 @@ function readNetworkProfile(value: unknown): NetworkProfile {
 function endpoint(value: string) {
   const url = new URL(value);
   if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Only HTTP(S) origins are supported.");
-  if (url.hostname.includes("*") || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
-    throw new Error("Each origin must be exact and without credentials, path, query, or fragment.");
+  if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+    throw new Error("paperclipOrigin must be an origin without credentials, path, query, or fragment.");
   }
   return { protocol: url.protocol, hostname: url.hostname.toLowerCase(), port: Number(url.port || (url.protocol === "https:" ? 443 : 80)) } as const;
 }
@@ -39,22 +40,10 @@ export async function parsePolicy(raw: Record<string, unknown>): Promise<LinuxBw
   const timeout = Number(raw.timeoutMs ?? 300_000);
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 86_400_000) throw new Error("timeoutMs is invalid.");
   const networkProfile = readNetworkProfile(raw.networkProfile);
-  const gateAOrigins = raw.gateAOrigins === undefined ? [] : raw.gateAOrigins;
-  if (!Array.isArray(gateAOrigins) || gateAOrigins.some((origin) => typeof origin !== "string" || !origin.trim())) {
-    throw new Error("gateAOrigins must be an array of HTTP(S) origins.");
-  }
-  const profileOrigins = networkProfile === "codex-managed" ? [...gateAOrigins, ...CODEX_MANAGED] : gateAOrigins;
-  const allowed = [...profileOrigins.map(endpoint), endpoint(configuredOrigin)];
-  const protocols = new Map<string, string>();
-  for (const entry of allowed) {
-    const authority = `${entry.hostname}:${entry.port}`;
-    const previous = protocols.get(authority);
-    if (previous && previous !== entry.protocol) throw new Error("Origins must not use conflicting protocols for one authority.");
-    protocols.set(authority, entry.protocol);
-  }
+  const profileOrigins = networkProfile === "codex-managed" ? CODEX_MANAGED : GATE_A;
   return {
     networkProfile,
-    allowed,
+    allowed: [...profileOrigins.map(endpoint), endpoint(configuredOrigin)],
     workspaceRoot: root,
     timeoutMs: timeout,
   };

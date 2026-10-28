@@ -24,7 +24,6 @@ const plugin = definePlugin({
           workspaceRoot: policy.workspaceRoot,
           timeoutMs: policy.timeoutMs,
           networkProfile: policy.networkProfile,
-          gateAOrigins: params.config.gateAOrigins ?? [],
         },
       };
     }

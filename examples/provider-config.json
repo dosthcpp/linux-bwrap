@@ -1,10 +1,6 @@
 {
   "paperclipOrigin": "https://paperclip.example.test",
   "workspaceRoot": "/srv/paperclip-workspace",
-  "gateAOrigins": [
-    "http://gate-a.example.test:8020",
-    "http://gate-a.example.test:8021"
-  ],
   "networkProfile": "gate-a-strict",
   "timeoutMs": 300000
 }
